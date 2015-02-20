@@ -13,242 +13,10 @@
 # Versionscheck
 ######################################
 [ -f /etc/bananian_version ] && BANANIAN_VERSION=$(cat /etc/bananian_version) || BANANIAN_VERSION=140801
-if [ $BANANIAN_VERSION -lt 150101 ]; then {
-        echo -e "\033[0;31mThis version requires Bananian Linux 15.01 (or later). Exiting\033[0m"
-        exit
-} fi
-
-
-######################################
-# Hardware auf bananapro einstellen
-######################################
-
-
-# prepare tmp dir
-TMPDIR=$(mktemp -d)
-cd $TMPDIR
-
-# mount /dev/mmcblk0p1
-mkdir ${TMPDIR}/mnt
-mount /dev/mmcblk0p1 ${TMPDIR}/mnt
-
-# fex dir
-FEXDIR="${TMPDIR}/mnt/fex"
-BANANIAN_PLATFORM="BananaPro"
-
-if [[ -f ${FEXDIR}/${BANANIAN_PLATFORM}/script.bin ]]; then {
-  cp ${FEXDIR}/${BANANIAN_PLATFORM}/script.bin ${TMPDIR}/mnt/script.bin
-  echo $BANANIAN_PLATFORM > /etc/bananian_platform
-  echo -e "Hardware configuration has been set to: ${BANANIAN_PLATFORM}. Please reboot your system!"
-} else {
-  echo -e "\033[0;31mscript.bin not found. exiting!\033[0m"
-} 
+if [ $BANANIAN_VERSION -lt 150101 ]; then
+  echo -e "\033[0;31mThis version requires Bananian Linux 15.01 (or later). Exiting\033[0m"
+  exit
 fi
-
-umount ${TMPDIR}/mnt && rm -rf $TMPDIR
-
-######################################
-# Bananian Image bugfixes
-######################################
-
-# Workaround für nicht funktionierendes lokalisiertes keyboard layout 
-apt-get -y install --reinstall console-data console-setup keyboard-configuration
-
-
-
-
-######################################
-# Blinkende Grüne LED abschalten. Blinkt nur noch während dem Booten
-######################################
-
-#Test ob der Eintrag schon vorhanden ist
-grep '^echo none > /sys/class/leds/green\\:ph24\\:led1/trigger' /etc/rc.local > /dev/null
-if [ $? -ne 0 ];then
-
-tmpdatei = $(tempfile)
-grep -v "^exit 0$" /etc/rc.local > $tmpdatei
-cat <<EOT >> $tmpdatei
-
-# Turn off green LED
-echo none > /sys/class/leds/green\:ph24\:led1/trigger
-
-exit 0
-EOT
-
-cat $tmpdatei > /etc/rc.local
-rm $tmpdatei
-
-fi
-
-######################################
-# Tools installieren
-######################################
-
-# vim 
-apt-get -y purge vim.tiny
-apt-get -y install vim
-
-update-alternatives --set editor /usr/bin/vim.basic
-
-#TODO Entscheiden ob augeas verwendet werden soll
-# command line tool to manipulate configuration from the shell
-#apt-get -y install augeas-tools
-
-apt-get -y install bash-completion
-
-
-
-######################################
-# .ssh/authorized_keys anlegen
-######################################
-
-mkdir /root./.ssh
-> /root./.ssh/authorized_keys
-chmod 600 /root./.ssh/authorized_keys
-
-#TODO eigenen Public Key eintragen
-#echo "" >> /root./.ssh/authorized_keys
-
-#TODO root passwort ändern
-
-######################################
-# WLAN in AP-Mode konfigurieren 
-######################################
-
-# Wlan Modul aktivieren
-grep '^ap6210' /etc/modules > /dev/null
-if [ $? -ne 0 ];then
-cat <<EOT >> /etc/modules
-
-#wlan onboard chip
-ap6210
-
-EOT
-modprobe ap6210
-fi
-
-# Netzwerk konfigurieren.
-# eth0 wird nicht beim booten gestartet
-# wlan0 auf feste IP
-cat <<EOT > /etc/network/interfaces
-# interfaces(5) file used by ifup(8) and ifdown(8)
-auto lo
-iface lo inet loopback
-
-#auto eth0
-iface eth0 inet dhcp
-
-auto wlan0
-allow-hotplug wlan0
-iface wlan0 inet static
-address 192.168.123.1
-netmask 255.255.255.0
-broadcast 192.168.123.255
-EOT
-
-#TODO FIX WPA2 funktioniert nicht
-#TODO SSID und wpa_passphrase ändern sobald Projektname feststeht
-# AP-Mode
-apt-get -y install hostapd
-cat <<EOT >> /etc/hostapd/hostapd.conf
-# Schnittstelle und Treiber
-interface=wlan0
-driver=nl80211
-
-# WLAN-Konfiguration
-ssid=esk8b
-channel=1
-
-# ESSID sichtbar
-ignore_broadcast_ssid=0
-
-# Ländereinstellungen
-country_code=DE
-ieee80211d=1
-
-# Übertragungsmodus
-hw_mode=g
-
-# Optionale Einstellungen
-# supported_rates=10 20 55 110 60 90 120 180 240 360 480 540
-
-# Draft-N Modus aktivieren / optional nur für entsprechende Karten
-# ieee80211n=1
-
-# Übertragungsmodus / Bandbreite 40MHz
-# ht_capab=[HT40+][SHORT-GI-40][DSSS_CCK-40]
-
-# Beacons
-beacon_int=100
-dtim_period=2
-
-# MAC-Authentifizierung
-macaddr_acl=0
-
-# max. Anzahl der Clients
-max_num_sta=20
-
-# Größe der Datenpakete/Begrenzung
-rts_threshold=2347
-fragm_threshold=2346
-
-# hostapd Log Einstellungen
-logger_syslog=-1
-logger_syslog_level=2
-logger_stdout=-1
-logger_stdout_level=2
-
-# temporäre Konfigurationsdateien
-dump_file=/tmp/hostapd.dump
-ctrl_interface=/var/run/hostapd
-ctrl_interface_group=0
-
-# Authentifizierungsoptionen 
-auth_algs=3
-
-# wmm-Funktionalität
-wmm_enabled=0
-
-# Verschlüsselung / hier rein WPA2
-wpa=2
-rsn_preauth=1
-rsn_preauth_interfaces=wlan0
-wpa_key_mgmt=WPA-PSK
-rsn_pairwise=CCMP
-
-# Schlüsselintervalle / Standardkonfiguration
-wpa_group_rekey=600
-wpa_ptk_rekey=600
-wpa_gmk_rekey=86400
-
-# Zugangsschlüssel (PSK) / hier in Klartext (ASCII)
-wpa_passphrase=esk8b.de
-
-EOT
-
-
-# dhcpd
-apt-get -y install dnsmasq
-
-#TODO Dateiname der Config ändern sobald Projektname feststeht
-#Config schreiben
-cat <<EOT >> /etc/dnsmasq.d/esk8b.conf
-# DHCP-Server aktiv für Interface
-interface=wlan0
-
-# DHCP-Server nicht aktiv für Interface
-no-dhcp-interface=eth0
-
-# IP-Adressbereich / Lease-Time
-dhcp-range=interface:wlan0,192.168.123.100,192.168.123.200,infinite
-EOT
-
-#TODO wenn SSID von bekanntem Netz in Reichweite dann verbinden, sonst AP-Mode
-#TODO Button für manuelles umstellen des WLAN Modess
-
-
-
-
 
 
 ######################################
@@ -276,6 +44,265 @@ export HISTTIMEFORMAT='[%d.%m.%y %H:%M] '
 EOT
 
 
+######################################
+# Hardware auf bananapro einstellen
+######################################
+
+# prepare tmp dir
+TMPDIR=$(mktemp -d)
+
+# mount /dev/mmcblk0p1
+mkdir ${TMPDIR}/mnt
+mount /dev/mmcblk0p1 ${TMPDIR}/mnt
+
+# fex dir
+FEXDIR="${TMPDIR}/mnt/fex"
+BANANIAN_PLATFORM="BananaPro"
+
+if [[ -f ${FEXDIR}/${BANANIAN_PLATFORM}/script.bin ]]; then {
+  cp ${FEXDIR}/${BANANIAN_PLATFORM}/script.bin ${TMPDIR}/mnt/script.bin
+  echo $BANANIAN_PLATFORM > /etc/bananian_platform
+  echo -e "Hardware configuration has been set to: ${BANANIAN_PLATFORM}. Please reboot your system!"
+} else {
+  echo -e "\033[0;31mscript.bin not found. exiting!\033[0m"
+} 
+fi
+
+umount ${TMPDIR}/mnt && rm -rf $TMPDIR
+
+
+######################################
+# Bananian Image bugfixes
+######################################
+apt-get update; apt-get -y upgrade
+
+# Workaround für nicht funktionierendes lokalisiertes keyboard layout 
+apt-get -y install --reinstall console-data console-setup keyboard-configuration
+
+#hostapd kompilieren damit wpa2 funktioniert
+apt-get -y install hostapd git make gcc libc6-dev libssl-dev libnl-dev
+TMPDIR=$(mktemp -d)
+cd $TMPDIR
+git clone git://w1.fi/srv/git/hostap.git
+cd hostap/hostapd 
+cp defconfig .config
+make
+cp hostap /usr/sbin/hostap
+cp hostap_cli /usr/sbin/hostap_cli
+cd
+rm -rf $TMPDIR
+
+
+######################################
+# Powerbutton ACPI
+######################################
+
+apt-get -y install acpid
+
+cat <<EOT >> /etc/acpi/events/button_power
+event=button/power
+action=/etc/acpi/shutdown.sh 
+EOT
+
+cat <<EOT >> /etc/acpi/shutdown.sh
+#!/bin/bash
+shutdown -h now
+EOT
+chmod +x /etc/acpi/shutdown.sh
+/etc/init.d/acpid restart
+
+
+######################################
+# Keyboard Layout auf DE, Timezone
+######################################
+cat <<EOT > /etc/default/keyboard
+
+# KEYBOARD CONFIGURATION FILE
+
+# Consult the keyboard(5) manual page.
+
+XKBMODEL="pc105"
+XKBLAYOUT="de"
+XKBVARIANT=""
+XKBOPTIONS=""
+
+BACKSPACE="guess"
+EOT
+
+echo "Europe/Berlin" > /etc/timezone
+
+
+######################################
+# Blinkende Grüne LED abschalten. Blinkt nur noch während dem Booten
+######################################
+
+#Test ob der Eintrag schon vorhanden ist
+grep '^echo none > /sys/class/leds/green\\:ph24\\:led1/trigger' /etc/rc.local > /dev/null
+if [ $? -ne 0 ];then
+
+tmpdatei=$(tempfile)
+grep -v "^exit 0$" /etc/rc.local > $tmpdatei
+cat <<EOT >> $tmpdatei
+
+# Turn off green LED
+echo none > /sys/class/leds/green\:ph24\:led1/trigger
+
+exit 0
+EOT
+
+cat $tmpdatei > /etc/rc.local
+rm $tmpdatei
+
+fi
+
+
+######################################
+# Tools installieren
+######################################
+
+# vim 
+apt-get -y purge vim.tiny
+apt-get -y install vim bash-completion
+
+apt-get -y install unp unrar-free p7zip-full unzip
+
+update-alternatives --set editor /usr/bin/vim.basic
+
+cat <<EOT >> /etc/vim/vimrc.local
+syntax on
+set background=dark
+set ignorecase
+set incsearch
+set showcmd
+set showmatch
+set noai
+EOT
+
+#TODO Entscheiden ob augeas verwendet werden soll
+# command line tool to manipulate configuration from the shell
+#apt-get -y install augeas-tools
+
+
+######################################
+# .ssh/authorized_keys anlegen
+######################################
+
+mkdir /root./.ssh
+> /root./.ssh/authorized_keys
+chmod 600 /root./.ssh/authorized_keys
+
+#TODO eigenen Public Key eintragen
+#echo "" >> /root./.ssh/authorized_keys
+
+#TODO root passwort ändern
+
+
+######################################
+# WLAN in AP-Mode konfigurieren 
+######################################
+
+# Wlan Modul aktivieren
+grep '^ap6210' /etc/modules > /dev/null
+if [ $? -ne 0 ];then
+cat <<EOT >> /etc/modules
+
+#wlan onboard chip
+ap6210
+
+EOT
+modprobe ap6210
+fi
+
+# Netzwerk konfigurieren.
+# eth0 wird nicht beim booten gestartet
+# wlan0 auf feste IP
+cat <<EOT > /etc/network/interfaces_ap
+# interfaces(5) file used by ifup(8) and ifdown(8)
+auto lo
+iface lo inet loopback
+
+#auto eth0
+iface eth0 inet dhcp
+
+auto wlan0
+allow-hotplug wlan0
+iface wlan0 inet static
+address 192.168.123.1
+netmask 255.255.255.0
+broadcast 192.168.123.255
+EOT
+
+
+#TODO SSID und wpa_passphrase ändern sobald Projektname feststeht
+# AP-Mode http://w1.fi/hostapd/
+apt-get -y install hostapd
+cat <<EOT >> /etc/hostapd/hostapd.conf
+interface=wlan0
+driver=nl80211
+ssid=esk8b
+channel=1
+ignore_broadcast_ssid=0
+country_code=DE
+ieee80211d=1
+hw_mode=g
+beacon_int=100
+dtim_period=2
+macaddr_acl=0
+max_num_sta=20
+rts_threshold=2347
+fragm_threshold=2346
+logger_syslog=-1
+logger_syslog_level=2
+logger_stdout=-1
+logger_stdout_level=2
+dump_file=/tmp/hostapd.dump
+ctrl_interface=/var/run/hostapd
+ctrl_interface_group=0
+auth_algs=3
+wmm_enabled=0
+wpa=2
+rsn_preauth=1
+rsn_preauth_interfaces=wlan0
+wpa_key_mgmt=WPA-PSK
+rsn_pairwise=CCMP
+wpa_group_rekey=600
+wpa_ptk_rekey=600
+wpa_gmk_rekey=86400
+wpa_passphrase=esk8b.de
+EOT
+
+cat <<EOT >> /etc/network/interfaces_client
+
+EOT
+
+ln -s /etc/network/interfaces_ap /etc/network/interfaces
+
+# dhcpd
+apt-get -y install dnsmasq
+
+#TODO Dateiname der Config ändern sobald Projektname feststeht
+#Config schreiben
+cat <<EOT >> /etc/dnsmasq.d/esk8b.conf
+# DHCP-Server aktiv für Interface
+interface=wlan0
+
+# DHCP-Server nicht aktiv für Interface
+no-dhcp-interface=eth0
+
+# IP-Adressbereich / Lease-Time
+dhcp-range=interface:wlan0,192.168.123.100,192.168.123.200,infinite
+EOT
+
+#TODO wenn SSID von bekanntem Netz in Reichweite dann verbinden, sonst AP-Mode
+#TODO Button für manuelles umstellen des WLAN Modess
+
+
+
+
+
+
+
+
 
 
 
@@ -294,8 +321,6 @@ exit 0
 # TODO
 ######################################
 
-# vim einstellungen
-# locals, keyboard
 # alle ungenutzen dinge abschalten, alles schlank und stromsparend machen, kernel module, hw schnittstellen ...
 # sbc performance daten? munin?
 
@@ -307,19 +332,58 @@ exit 0
 # Webserver
 ######################################
 
-#nginx mit php5 xcache
+#apache mit php5 xcache
 
 
 ######################################
 # GPS Modul
 ######################################
+#GPS 
+#http://raspberry.tips/raspberrypi-tutorials/gps-modul-mit-dem-raspberry-pi-ortung-und-navigation/
+#http://linlog.blogspot.de/2009/07/synchronizing-ntp-server-to-gpspps.html
+apt-get -y install gpsd gpsd-clients
+#cgps -s
+#gpsmon
+
+cat <<EOT > /etc/default/gpsd
+# Default settings for gpsd.
+# Please do not edit this file directly - use `dpkg-reconfigure gpsd' to
+# change the options.
+START_DAEMON="true"
+GPSD_OPTIONS="-n -G"
+DEVICES="/dev/ttyS2"
+USBAUTO="true"
+GPSD_SOCKET="/var/run/gpsd.sock"
+EOT
+
 # GPS Uhrzeit
 #http://raspberry.tips/raspberrypi-tutorials/raspberry-pi-uhrzeit-ueber-gps-beziehen-zeitserver/
 
+# gps track aufzeichen gpxlogger > tracklog.gpx
+#TODO GPS + Telemetriedaten in DB speichern 
+#http://sgowtham.com/journal/2009/02/12/php-storing-gps-track-points-in-mysql/
+#http://phpmygpx.tuxfamily.org/phpmygpx.php
+
+TMPDIR=$(mktemp -d)
+cd $TMPDIR
+wget --post-data "file=phpMyGPX-0.7.tar.bz2&country=de&submit=Download" http://phpmygpx.tuxfamily.org/force_download.php -O phpMyGPX-0.7.tar.bz2
+unp phpMyGPX-0.7.tar.bz2
+mv phpmygpx /var/www/
+cd
+rm -rf $TMPDIR
+chown -R root:www-data /var/www/phpmygpx
+chmod 775 /var/www/phpmygpx
 
 ######################################
 # IPv6 abschalten
 ######################################
+
+
+######################################
+# LAMP
+######################################
+
+apt-get -y install apache2 php5 php5-gd php5-mysql mysql-server 
 
 
 ######################################
@@ -332,10 +396,10 @@ EOT
 apt-get update
 
 ######################################
-# Sprachausgabe
+# Sprachausgabe mp3 Wiedergabe
 ######################################
 
-
+apt-get -y install alsa alsa-utils espeak jackd2 mpg321
 
 
 ######################################
