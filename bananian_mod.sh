@@ -87,8 +87,8 @@ git clone git://w1.fi/srv/git/hostap.git
 cd hostap/hostapd 
 cp defconfig .config
 make
-cp hostap /usr/sbin/hostap
-cp hostap_cli /usr/sbin/hostap_cli
+cp hostapd /usr/sbin/hostapd
+cp hostapd_cli /usr/sbin/hostapd_cli
 cd
 rm -rf $TMPDIR
 
@@ -168,7 +168,7 @@ apt-get -y install unp unrar-free p7zip-full unzip
 
 update-alternatives --set editor /usr/bin/vim.basic
 
-cat <<EOT >> /etc/vim/vimrc.local
+cat <<EOT > /etc/vim/vimrc.local
 syntax on
 set background=dark
 set ignorecase
@@ -187,9 +187,9 @@ EOT
 # .ssh/authorized_keys anlegen
 ######################################
 
-mkdir /root./.ssh
-> /root./.ssh/authorized_keys
-chmod 600 /root./.ssh/authorized_keys
+mkdir /root/.ssh
+> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
 
 #TODO eigenen Public Key eintragen
 #echo "" >> /root./.ssh/authorized_keys
@@ -198,7 +198,7 @@ chmod 600 /root./.ssh/authorized_keys
 
 
 ######################################
-# WLAN in AP-Mode konfigurieren 
+# WLAN
 ######################################
 
 # Wlan Modul aktivieren
@@ -235,10 +235,9 @@ EOT
 
 #TODO SSID und wpa_passphrase ändern sobald Projektname feststeht
 # AP-Mode http://w1.fi/hostapd/
-apt-get -y install hostapd
-cat <<EOT >> /etc/hostapd/hostapd.conf
+
+cat <<EOT > /etc/hostapd/hostapd.conf
 interface=wlan0
-driver=nl80211
 ssid=esk8b
 channel=1
 ignore_broadcast_ssid=0
@@ -251,28 +250,63 @@ macaddr_acl=0
 max_num_sta=20
 rts_threshold=2347
 fragm_threshold=2346
-logger_syslog=-1
-logger_syslog_level=2
-logger_stdout=-1
-logger_stdout_level=2
+#logger_syslog=-1
+#logger_syslog_level=0
+#logger_stdout=-1
+#logger_stdout_level=2
 dump_file=/tmp/hostapd.dump
 ctrl_interface=/var/run/hostapd
 ctrl_interface_group=0
-auth_algs=3
+auth_algs=1
 wmm_enabled=0
 wpa=2
-rsn_preauth=1
-rsn_preauth_interfaces=wlan0
 wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
-wpa_group_rekey=600
-wpa_ptk_rekey=600
-wpa_gmk_rekey=86400
-wpa_passphrase=esk8b.de
+wpa_pairwise=TKIP
+wpa_passphrase=12345678
 EOT
 
-cat <<EOT >> /etc/network/interfaces_client
+cat <<EOT > /etc/network/interfaces_client
+# interfaces(5) file used by ifup(8) and ifdown(8)
+auto lo
+iface lo inet loopback
 
+#auto eth0
+iface eth0 inet dhcp
+
+auto wlan0
+allow-hotplug wlan0
+
+# WLAN Client Mode
+iface wlan0 inet dhcp
+wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
+EOT
+
+cat <<EOT > /etc/wpa_supplicant/wpa_supplicant.conf
+ctrl_interface=/var/run/wpa_supplicant
+ctrl_interface_group=root
+eapol_version=1
+ap_scan=1
+
+network={
+        ssid="BeispielFunknetzwerk1"
+        scan_ssid=1
+        proto=RSN
+        key_mgmt=WPA-PSK
+        pairwise=CCMP
+        group=CCMP
+        psk="Passphrase des Funknetzwerks"
+}
+
+network={
+        ssid="BeispielFunknetzwerk2"
+        scan_ssid=1
+        proto=RSN
+        key_mgmt=WPA-PSK
+        pairwise=CCMP
+        group=CCMP
+        psk="Passphrase des Funknetzwerks"
+}
 EOT
 
 ln -s /etc/network/interfaces_ap /etc/network/interfaces
@@ -282,14 +316,9 @@ apt-get -y install dnsmasq
 
 #TODO Dateiname der Config ändern sobald Projektname feststeht
 #Config schreiben
-cat <<EOT >> /etc/dnsmasq.d/esk8b.conf
-# DHCP-Server aktiv für Interface
+cat <<EOT > /etc/dnsmasq.d/esk8b.conf
 interface=wlan0
-
-# DHCP-Server nicht aktiv für Interface
 no-dhcp-interface=eth0
-
-# IP-Adressbereich / Lease-Time
 dhcp-range=interface:wlan0,192.168.123.100,192.168.123.200,infinite
 EOT
 
@@ -297,15 +326,79 @@ EOT
 #TODO Button für manuelles umstellen des WLAN Modess
 
 
+######################################
+# Teensy Loader
+######################################
+#http://www.pjrc.com/teensy/loader_cli.html
+
+#TODO halfkey .. jump to bootloader im teensy
+#http://www.pjrc.com/teensy/jump_to_bootloader.html
+
+
+apt-get install libusb-dev
+TMPDIR=$(mktemp -d); cd $TMPDIR
+wget http://www.pjrc.com/teensy/teensy_loader_cli.2.1.zip
+unp teensy_loader_cli.2.1.zip
+cd teensy_loader_cli
+make
+cp teensy_loader_cli /usr/local/bin/
+cd $HOME
+rm -rf $TMPDIR
+
+cat <<EOT > /etc/udev/rules.d/49-teensy.rules
+# UDEV Rules for Teensy boards, http://www.pjrc.com/teensy/
+#
+# The latest version of this file may be found at:
+#   http://www.pjrc.com/teensy/49-teensy.rules
+#
+# This file must be placed at:
+#
+# /etc/udev/rules.d/49-teensy.rules    (preferred location)
+#   or
+# /lib/udev/rules.d/49-teensy.rules    (req'd on some broken systems)
+#
+# To install, type this command in a terminal:
+#   sudo cp 49-teensy.rules /etc/udev/rules.d/49-teensy.rules
+#
+# After this file is installed, physically unplug and reconnect Teensy.
+#
+ATTRS{idVendor}=="16c0", ATTRS{idProduct}=="04[789]?", ENV{ID_MM_DEVICE_IGNORE}="1"
+ATTRS{idVendor}=="16c0", ATTRS{idProduct}=="04[789]?", ENV{MTP_NO_PROBE}="1"
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="16c0", ATTRS{idProduct}=="04[789]?", MODE:="0666"
+KERNEL=="ttyACM*", ATTRS{idVendor}=="16c0", ATTRS{idProduct}=="04[789]?", MODE:="0666"
+#
+# If you share your linux system with other users, or just don't like the
+# idea of write permission for everybody, you can replace MODE:="0666" with
+# OWNER:="yourusername" to create the device owned by you, or with
+# GROUP:="somegroupname" and mange access using standard unix groups.
+#
+#
+# If using USB Serial you get a new device each time (Ubuntu 9.10)
+# eg: /dev/ttyACM0, ttyACM1, ttyACM2, ttyACM3, ttyACM4, etc
+#    apt-get remove --purge modemmanager     (reboot may be necessary)
+#
+# Older modem proding (eg, Ubuntu 9.04) caused very slow serial device detection.
+# To fix, add this near top of /lib/udev/rules.d/77-nm-probe-modem-capabilities.rules
+#   SUBSYSTEMS=="usb", ATTRS{idVendor}=="16c0", ATTRS{idProduct}=="04[789]?", GOTO="nm_modem_probe_end" 
+#
+EOT
 
 
 
+######################################
+# GPIO wiringBP
+######################################
+#http://wiki.lemaker.org/WiringPi
+#http://wiringpi.com
 
-
-
-
-
-
+TMPDIR=$(mktemp -d); cd $TMPDIR
+apt-get install git-core sudo make gcc libc6-dev libc-dev
+git clone https://github.com/LeMaker/WiringBP.git -b bananapro
+cd WiringBP
+chmod +x build
+./bulid
+cd $HOME
+rm -rf $TMPDIR
 
 
 
@@ -328,11 +421,6 @@ exit 0
 # public wlan mit zugriff auf definierte freigaben?
 # smb server mit public upload, nützlich bei events um fotos videos zu speichern?
 
-######################################
-# Webserver
-######################################
-
-#apache mit php5 xcache
 
 
 ######################################
@@ -400,6 +488,8 @@ apt-get update
 ######################################
 
 apt-get -y install alsa alsa-utils espeak jackd2 mpg321
+
+
 
 
 ######################################
