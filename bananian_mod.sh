@@ -330,7 +330,7 @@ EOT
 # Teensy Loader
 ######################################
 #http://www.pjrc.com/teensy/loader_cli.html
-
+#http://www.pjrc.com/teensy/blink_both.zip
 #TODO halfkey .. jump to bootloader im teensy
 #http://www.pjrc.com/teensy/jump_to_bootloader.html
 
@@ -507,5 +507,11 @@ http://cbwebs.de/single-board-computer/banana-pi/install-debian-wheezy-on-your-b
 http://doxfer.webmin.com/Webmin/Main_Page
 http://ajenti.org
 
+#fex 
+http://linux-sunxi.org/Main_Page
+http://linux-sunxi.org/Fex_Guide#disp_init_configuration
+
+#gpio
+http://elinux.org/RPi_Low-level_peripherals
 
 
