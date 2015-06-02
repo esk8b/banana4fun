@@ -1,0 +1,9 @@
+
+https://wiki.debian.org/HowToSetupADebianRepository
+http://debian-handbook.info/browse/de-DE/stable/sect.package-meta-information.html
+http://www.auxnet.de/debianubuntu-einfache-deb-pakete-selbst-erstellen/
+
+
+#bananian webgui
+http://www.raspberry-pi-geek.com/Archive/2013/01/Building-web-GUIs-for-your-Rasp-Pi-project-with-the-Bootstrap-toolkit
+http://raspctl.com

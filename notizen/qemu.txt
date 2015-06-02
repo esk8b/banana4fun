@@ -1,0 +1,65 @@
+qemu.txt
+
+http://blog.flexvm.es/?p=91
+http://www.raspberry-pi-geek.de/Magazin/2014/04/Raspberry-Pi-emulieren
+https://rechtzeit.wordpress.com/tag/qemu-code-outside-ram-or-rom/
+http://blog.eldajani.net/arch-linux-qemu-bpi-emulation/
+
+qemu-system-arm -sd bananian-1501.img -m 1024M -kernel kernel/uImage -M vexpress-a15 -serial stdio -nographic -monitor null -no-reboot -append "root=/dev/mmcblk0p2 panic=1 rootfstype=ext4 rw"
+
+
+
+qemu-system-arm \
+-m 1024M \
+-sd bananian-14.09.img \
+-M vexpress-a9 \
+-cpu cortex-a9 \
+-kernel vmlinuz-3.2.0-4-vexpress \
+-no-reboot \
+-serial stdio \
+-initrd initrd.img-3.2.0-4-vexpress \
+-append "root=/dev/mmcblk0p2 panic=1 rootfstype=ext4 rw" \
+-net nic -net user,hostfwd=tcp::2222-:22
+
+ -m 512m 
+ -M vexpress-a15 
+ -cpu host 
+ -kernel zImage 
+ -dtb vexpress-v2p-ca15-tc1.dtb 
+ -append "root=/dev/vda console=ttyAMA0 rootwait" 
+ -drive if=none,file=opensuse-factory.img,id=factory 
+ -device virtio-blk-device,drive=factory 
+ -net nic 
+ -net user 
+ -monitor null 
+ -serial stdio 
+ -nographic
+
+
+############################################################
+qemu architectural chroot
+############################################################
+#!/bin/bash
+
+BCH=$HOME/banana_chroot
+
+mount -t ext4 -o loop,offset=$((512 * 104448)) temp/bananian-1501.img $BCH
+
+cp /usr/bin/qemu-arm-static $BCH/usr/bin/
+
+cd $BCH
+mount -t proc /proc proc
+mount -o bind /dev dev
+mount -o bind /dev/pts dev/pts
+mount -o bind /sys sys
+chroot . /bin/bash
+
+exit 0
+############################################################
+qemu architectural chroot beenden
+############################################################
+#!/bin/bash
+BCH=$HOME/banana_chroot
+cd $HOME
+umount $BCH/{sys,proc,dev/pts,dev}
+umount $BCH

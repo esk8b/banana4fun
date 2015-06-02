@@ -1,0 +1,27 @@
+debian-repository
+
+http://www.pro-linux.de/artikel/2/1726/reprepro-debian-systeme-mit-einem-selbst-aufgesetzten-paket-repo-versorgen.html
+https://wiki.debian.org/SettingUpSignedAptRepositoryWithReprepro
+https://wiki.debian.org/HowToSetupADebianRepository
+http://debian-handbook.info/browse/de-DE/stable/sect.package-meta-information.html
+http://www.auxnet.de/debianubuntu-einfache-deb-pakete-selbst-erstellen/
+
+
+gpg
+https://www.debian.org/doc/manuals/securing-debian-howto/ch7.en.html#s-deb-pack-sign
+http://blog.jonliv.es/blog/2011/04/26/creating-your-own-signed-apt-repository-and-debian-packages/
+
+
+
+
+
+
+#bananian webgui
+http://www.raspberry-pi-geek.com/Archive/2013/01/Building-web-GUIs-for-your-Rasp-Pi-project-with-the-Bootstrap-toolkit
+http://raspctl.com
+
+
+
+
+
+reprepro --ask-passphrase -V -b /var/www/vhosts/apt.esk8b.de/httpdocs/ includedeb esk8b-bananian-wheezy /root/temp/

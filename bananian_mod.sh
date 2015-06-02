@@ -13,8 +13,8 @@
 # Versionscheck
 ######################################
 [ -f /etc/bananian_version ] && BANANIAN_VERSION=$(cat /etc/bananian_version) || BANANIAN_VERSION=140801
-if [ $BANANIAN_VERSION -lt 150101 ]; then
-  echo -e "\033[0;31mThis version requires Bananian Linux 15.01 (or later). Exiting\033[0m"
+if [ $BANANIAN_VERSION -ne 150101 ]; then
+  echo -e "\033[0;31mThis version requires Bananian Linux 15.01. Exiting\033[0m"
   exit
 fi
 
@@ -72,9 +72,12 @@ umount ${TMPDIR}/mnt && rm -rf $TMPDIR
 
 
 ######################################
-# Bananian Image bugfixes
+# Bananian Image bugfixes und updates
 ######################################
+# debian updates
 apt-get update; apt-get -y upgrade
+# bananian updates
+bananian-update
 
 # Workaround für nicht funktionierendes lokalisiertes keyboard layout 
 apt-get -y install --reinstall console-data console-setup keyboard-configuration
@@ -99,12 +102,12 @@ rm -rf $TMPDIR
 
 apt-get -y install acpid
 
-cat <<EOT >> /etc/acpi/events/button_power
+cat <<EOT > /etc/acpi/events/button_power
 event=button/power
 action=/etc/acpi/shutdown.sh 
 EOT
 
-cat <<EOT >> /etc/acpi/shutdown.sh
+cat <<EOT > /etc/acpi/shutdown.sh
 #!/bin/bash
 shutdown -h now
 EOT
@@ -162,9 +165,9 @@ fi
 
 # vim 
 apt-get -y purge vim.tiny
-apt-get -y install vim bash-completion
+apt-get -y install vim bash-completion htop
 
-apt-get -y install unp unrar-free p7zip-full unzip
+apt-get -y install unp unrar-free p7zip-full unzip lm-sensors
 
 update-alternatives --set editor /usr/bin/vim.basic
 
@@ -192,7 +195,7 @@ mkdir /root/.ssh
 chmod 600 /root/.ssh/authorized_keys
 
 #TODO eigenen Public Key eintragen
-#echo "" >> /root./.ssh/authorized_keys
+#echo "" >> /root/.ssh/authorized_keys
 
 #TODO root passwort ändern
 
@@ -478,9 +481,10 @@ apt-get -y install apache2 php5 php5-gd php5-mysql mysql-server
 # apt.esk8b.de Repository hinzufügen
 ######################################
 
-cat <<EOT > /etc/apt/sources.list.d/apt.esk8b.de
-
+cat <<EOT > /etc/apt/sources.list.d/apt.esk8b.de.list
+deb http://apt.esk8b.de/ esk8b-bananian-wheezy main
 EOT
+wget -O - http://apt.esk8b.de/gpg.key | apt-key add -
 apt-get update
 
 ######################################
@@ -489,8 +493,19 @@ apt-get update
 
 apt-get -y install alsa alsa-utils espeak jackd2 mpg321
 
+ 
+######################################
+# Samba
+######################################
+apt-get install -y samba
 
+#public 
+mkdir -p /var/smb/public
+chmod 777 /var/smb/public
 
+#quota
+#nmb abschlaten ...
+# performance tuning
 
 ######################################
 # Notitzen

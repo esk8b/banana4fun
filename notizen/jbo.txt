@@ -1,0 +1,19 @@
+#!/bin/bash
+#Jessie Banana Ofen
+
+#https://wiki.debian.org/CrossToolchains
+#http://exploringbeaglebone.com/chapter7/
+
+echo "deb http://emdebian.org/tools/debian jessie main" > /etc/apt/sources.list.d/crosstools.list
+apt-get -y install curl
+curl http://emdebian.org/tools/debian/emdebian-toolchain-archive.key | sudo apt-key add -
+apt-get update
+apt-get -y install crossbuild-essential-armhf
+
+# emulation arm prozessor
+apt-get -y install qemu-user-static
+
+apt-get -y install git
+
+# dependencies 
+apt-get -y install libusb-1.0-0-dev libusb-1.0-0 pkg-config libncurses5-dev 

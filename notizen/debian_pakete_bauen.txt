@@ -1,0 +1,33 @@
+https://www.debian.org/doc/manuals/maint-guide/start.de.html
+
+
+apt-get install dh-make
+
+
+METAPAKET
+http://wiki.ubuntuusers.de/Metapakete_erstellen
+
+
+Metapaket für
+htop
+unp
+vim
+bash-completion
+
+
+Source: meta-kai
+Section: unknown
+Priority: optional
+Maintainer: Kai Hauser <apt@elektro-skateboard.de>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.5
+Homepage: <insert the upstream URL, if relevant>
+#Vcs-Git: git://anonscm.debian.org/collab-maint/meta-kai.git
+#Vcs-Browser: http://anonscm.debian.org/?p=collab-maint/meta-kai.git;a=summary
+
+Package: meta-kai
+Architecture: any
+Depends: vim, htop, bash-completion, unp, unrar-free, p7zip-full, unzip, ${shlibs:Depends}, ${misc:Depends}
+Conflicts: vim-tiny
+Description: Kai's Standard-Tools
+  Grundeinrichtung des Systems so wie es Kai gerne hat.
