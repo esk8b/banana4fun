@@ -1,0 +1,7 @@
+dnsmasq und hostapd aus init level rausnehmen
+
+nach netzwerken suchen
+
+bekanntes netzwerk gefunden: verbinden
+
+kein bekanntes gefunden: AP starten
